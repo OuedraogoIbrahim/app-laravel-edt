@@ -20,33 +20,83 @@ class CoursesController extends Controller
      */
     public function index(Request $request)
     {
+        $user = Auth::user();
 
-        if (Auth::user()->personne->role == 'admin') {
-            return response()->json(Cours::query()->with(['matiere', 'salle', 'filiere', 'niveau'])->get());
+        if ($user->personne->role == 'admin') {
+            return response()->json(
+                Cours::query()
+                    ->with(['matiere', 'salle', 'filiere', 'niveau'])
+                    ->get()
+            );
         }
+
         $perPage = $request->query('per_page', 5);
-        $courses = Cours::query()
-            ->with(['matiere', 'salle', 'filiere', 'niveau'])
 
-            //Pour recuperer les cours a venir
-            ->when($request->has('start_date'), function ($query) use ($request) {
-                $query->where('date', '>', $request->start_date);
-            })
+        $query = Cours::query()
+            ->with(['matiere', 'salle', 'filiere', 'niveau']);
 
-            //Pour recuperer les cours d'aujourd'hui
-            ->when($request->isToday, function ($query) {
-                $query->whereDate('date', today());
-            })
-            ->paginate($perPage);
+        // Pour récupérer les cours à venir
+        $query->when($request->has('start_date'), function ($q) use ($request) {
+            $q->where('date', '>', $request->start_date);
+        });
+
+        // Pour récupérer les cours d'aujourd'hui
+        $query->when($request->isToday, function ($q) {
+            $q->whereDate('date', today());
+        });
+
+        // Application du filtre selon le rôle
+        if ($user->personne->role == 'enseignant') {
+            $query->whereHas('matiere.enseignants', function ($q) use ($user) {
+                $q->where('enseignants.id', $user->personne->enseignant->id);
+            });
+        } elseif ($user->personne->role == 'etudiant' || $user->personne->role == 'delegue') {
+            $query->where('niveau_id', $user->personne->etudiant->niveau_id);
+        }
+
+        $courses = $query->paginate($perPage);
+
         return response()->json($courses);
-        //
     }
 
+
+    // public function weekCourses(Request $request)
+    // {
+    //     $startDate = $request->startDate;
+    //     $endDate = $request->endDate;
+
+    //     $courses = Cours::query()
+    //         ->with(['matiere', 'salle', 'filiere', 'niveau'])
+    //         ->when(Auth::user()->personne->role == 'etudiant', function ($query) use ($request) {
+    //             $query->where('niveau_id', Auth::user()->personne->etudiant->niveau_id);
+    //         })
+    //         ->whereBetween('date', [$startDate, $endDate])
+    //         ->get();
+
+    //     return response()->json($courses);
+    // }
     public function weekCourses(Request $request)
     {
+        $request->validate([
+            'startDate' => 'required|date',
+            'endDate' => 'required|date|after_or_equal:startDate',
+            'niveau_id' => 'nullable|integer|exists:niveaux,id',
+        ]);
+
         $startDate = $request->startDate;
         $endDate = $request->endDate;
-        $courses = Cours::query()->whereBetween('date', [$startDate, $endDate])->get();
+        $niveauId = $request->niveau_id;
+
+        $courses = Cours::query()
+            ->with(['matiere', 'salle', 'filiere', 'niveau'])
+            ->when(Auth::user()->personne->role == 'etudiant' || Auth::user()->personne->role == 'delegue', function ($query) use ($request) {
+                $query->where('niveau_id', Auth::user()->personne->etudiant->niveau_id);
+            })
+            ->when($niveauId && Auth::user()->personne->role == 'enseignant', function ($query) use ($niveauId) {
+                $query->where('niveau_id', $niveauId);
+            })
+            ->whereBetween('date', [$startDate, $endDate])
+            ->get();
 
         return response()->json($courses);
     }
@@ -84,13 +134,33 @@ class CoursesController extends Controller
 
     public function pendingValidation(Request $request)
     {
-        $courses = Cours::query()
+        $user = Auth::user();
+
+        $query = Cours::query()
             ->with(['matiere', 'salle', 'filiere', 'niveau'])
             ->where('statut', 'en attente')
-            ->whereDate('date', '<', today())
-            ->get();
+            ->whereDate('date', '<', today());
+
+        if ($user->personne->role == 'enseignant') {
+            $query->whereHas('matiere.enseignants', function ($q) use ($user) {
+                $q->where('enseignants.id', $user->personne->enseignant->id);
+            });
+        } elseif ($user->personne->role == 'etudiant' || $user->personne->role == 'delegue') {
+            $query->where('niveau_id', $user->personne->etudiant->niveau_id);
+        }
+
+        $courses = $query->get();
 
         return response()->json($courses);
+    }
+
+    public function courseCompleted(Cours $course)
+    {
+        $course->statut = 'terminer';
+        $course->commentaire = 'Aucun commentaire';
+        $course->valide_par = 'delegué';
+        $course->date_validation = now();
+        $course->update();
     }
 
     /**
@@ -99,6 +169,7 @@ class CoursesController extends Controller
     public function store(Request $request)
     {
         try {
+            // 1. Validation
             $valid = $request->validate([
                 'start' => 'required|date',
                 'heure_debut' => 'required|string',
@@ -110,30 +181,72 @@ class CoursesController extends Controller
                 'type' => 'required|in:cours,devoir,autre'
             ]);
 
-            $course = new Cours();
-            $course->date = $valid['start'];
-            $course->heure_debut = $valid['heure_debut'];
-            $course->heure_fin = $valid['heure_fin'];
-            $course->filiere_id = $valid['filiere'];
+            // 2. Chargement intelligent des données
+            $filiere = Filiere::findOrFail($valid['filiere']);
+            $niveau = $filiere->niveaux()->where('nom', $valid['niveau'])->firstOrFail();
+            $matiere = $niveau->matieres()->where('nom', $valid['matiere'])->firstOrFail();
+            $salle = Salle::where('nom', $valid['salle'])->firstOrFail();
 
-            $filiere = Filiere::query()->find($valid['filiere']);
-            $niveau = $filiere->niveaux()->where('nom', $valid['niveau'])->first();
+            $enseignant = $matiere->enseignants->first(); // récupération du 1er enseignant lié
 
-            $course->niveau_id = $niveau->id;
-            $course->salle_id = Salle::query()->where('nom', $valid['salle'])->first()->id;
+            if (!$enseignant) {
+                return response()->json([
+                    'errors' => 'Aucun enseignant n\'est associé à cette matière.'
+                ], 422);
+            }
 
-            $matiere = $niveau->matieres()->where('nom', $valid['matiere'])->first();
-            $course->matiere_id = $matiere->id;
-            $course->type = $valid['type'];
+            $debut = $valid['heure_debut'];
+            $fin = $valid['heure_fin'];
 
-            $course->save();
+            // 3. Vérification de conflit d'enseignant
+            $conflitProfesseur = Cours::where('date', $valid['start'])
+                ->whereHas('matiere.enseignants', function ($query) use ($enseignant) {
+                    $query->where('enseignants.id', $enseignant->id);
+                })
+                ->where(function ($query) use ($debut, $fin) {
+                    $query->where('heure_debut', '<', $fin)
+                        ->where('heure_fin', '>', $debut);
+                })
+                ->exists();
 
-            return response()->json($course, 201);
+            if ($conflitProfesseur) {
+                return response()->json([
+                    'errors' => 'Conflit d\'horaire : Le professeur a déjà un cours programmé durant cette période.'
+                ], 409);
+            }
+
+            // 4. Vérification de conflit de salle
+            $conflitSalle = Cours::where('date', $valid['start'])
+                ->where('salle_id', $salle->id)
+                ->where(function ($query) use ($debut, $fin) {
+                    $query->where('heure_debut', '<', $fin)
+                        ->where('heure_fin', '>', $debut);
+                })
+                ->exists();
+
+            if ($conflitSalle) {
+                return response()->json([
+                    'errors' => 'Conflit de salle : La salle est déjà occupée durant cette période.'
+                ], 409);
+            }
+
+            // 5. Création du Cours
+            $cours = Cours::create([
+                'date' => $valid['start'],
+                'heure_debut' => $valid['heure_debut'],
+                'heure_fin' => $valid['heure_fin'],
+                'filiere_id' => $filiere->id,
+                'niveau_id' => $niveau->id,
+                'salle_id' => $salle->id,
+                'matiere_id' => $matiere->id,
+                'type' => $valid['type'],
+            ]);
+
+            return response()->json($cours, 201);
         } catch (\Throwable $th) {
             return response()->json(['errors' => $th->getMessage()], 500);
         }
     }
-
 
     /**
      * Display the specified resource.
@@ -149,6 +262,7 @@ class CoursesController extends Controller
     public function update(Request $request, $id)
     {
         try {
+            // 1. Validation
             $valid = $request->validate([
                 'start' => 'required|date',
                 'heure_debut' => 'required|string',
@@ -160,28 +274,71 @@ class CoursesController extends Controller
                 'type' => 'required|in:cours,devoir,autre'
             ]);
 
-            $course = Cours::findOrFail($id);
+            $cours = Cours::findOrFail($id);
 
-            $course->date = $valid['start'];
-            $course->heure_debut = $valid['heure_debut'];
-            $course->heure_fin = $valid['heure_fin'];
-            $course->filiere_id = $valid['filiere'];
-
-            $filiere = Filiere::find($valid['filiere']);
+            $filiere = Filiere::findOrFail($valid['filiere']);
             $niveau = $filiere->niveaux()->where('nom', $valid['niveau'])->firstOrFail();
-            $course->niveau_id = $niveau->id;
-
-            $salle = Salle::where('nom', $valid['salle'])->firstOrFail();
-            $course->salle_id = $salle->id;
-
             $matiere = $niveau->matieres()->where('nom', $valid['matiere'])->firstOrFail();
-            $course->matiere_id = $matiere->id;
+            $salle = Salle::where('nom', $valid['salle'])->firstOrFail();
 
-            $course->type = $valid['type'];
+            $enseignant = $matiere->enseignants->first(); // récupération du 1er enseignant lié
 
-            $course->save();
+            if (!$enseignant) {
+                return response()->json([
+                    'errors' => 'Aucun enseignant n\'est associé à cette matière.'
+                ], 422);
+            }
 
-            return response()->json($course, 200);
+            $debut = $valid['heure_debut'];
+            $fin = $valid['heure_fin'];
+
+            // 4. Vérification de conflit d'enseignant (exclure ce cours)
+            $conflitProfesseur = Cours::where('date', $valid['start'])
+                ->where('id', '!=', $cours->id)
+                ->whereHas('matiere.enseignants', function ($query) use ($enseignant) {
+                    $query->where('enseignants.id', $enseignant->id);
+                })
+                ->where(function ($query) use ($debut, $fin) {
+                    $query->where('heure_debut', '<', $fin)
+                        ->where('heure_fin', '>', $debut);
+                })
+                ->exists();
+
+            if ($conflitProfesseur) {
+                return response()->json([
+                    'errors' => 'Conflit d\'horaire : Le professeur a déjà un cours programmé durant cette période.'
+                ], 409);
+            }
+
+            // 5. Vérification de conflit de salle (exclure ce cours)
+            $conflitSalle = Cours::where('date', $valid['start'])
+                ->where('id', '!=', $cours->id)
+                ->where('salle_id', $salle->id)
+                ->where(function ($query) use ($debut, $fin) {
+                    $query->where('heure_debut', '<', $fin)
+                        ->where('heure_fin', '>', $debut);
+                })
+                ->exists();
+
+            if ($conflitSalle) {
+                return response()->json([
+                    'errors' => 'Conflit de salle : La salle est déjà occupée durant cette période.'
+                ], 409);
+            }
+
+            // 6. Mise à jour du cours
+            $cours->update([
+                'date' => $valid['start'],
+                'heure_debut' => $valid['heure_debut'],
+                'heure_fin' => $valid['heure_fin'],
+                'filiere_id' => $filiere->id,
+                'niveau_id' => $niveau->id,
+                'salle_id' => $salle->id,
+                'matiere_id' => $matiere->id,
+                'type' => $valid['type'],
+            ]);
+
+            return response()->json($cours, 200);
         } catch (\Throwable $th) {
             return response()->json(['errors' => $th->getMessage()], 500);
         }

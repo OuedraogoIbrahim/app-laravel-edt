@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Niveau extends Model
@@ -28,9 +29,13 @@ class Niveau extends Model
         return $this->hasMany(Etudiant::class);
     }
 
-
     public function cours(): HasMany
     {
         return $this->hasMany(Cours::class);
+    }
+
+    public function enseignants(): BelongsToMany
+    {
+        return $this->belongsToMany(Enseignant::class);
     }
 }

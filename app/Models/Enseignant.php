@@ -20,4 +20,9 @@ class Enseignant extends Model
     {
         return $this->belongsToMany(Matiere::class);
     }
+
+    public function niveaux(): BelongsToMany
+    {
+        return $this->belongsToMany(Niveau::class);
+    }
 }

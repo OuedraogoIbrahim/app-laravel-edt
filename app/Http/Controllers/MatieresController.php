@@ -13,7 +13,7 @@ class MatieresController extends Controller
     public function index()
     {
         $matieres = Matiere::query()->get();
-        return response()->json($matieres);
+        return response()->json($matieres->load('niveau'));
     }
 
     /**

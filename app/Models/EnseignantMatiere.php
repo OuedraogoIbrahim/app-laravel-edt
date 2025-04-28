@@ -7,5 +7,6 @@ use Illuminate\Database\Eloquent\Model;
 
 class EnseignantMatiere extends Model
 {
+
     use HasFactory;
 }

@@ -10,7 +10,16 @@ class Cours extends Model
 {
     use HasFactory;
 
-    protected $fillable = [];
+    protected $fillable = [
+        'date',
+        'heure_debut',
+        'heure_fin',
+        'filiere_id',
+        'niveau_id',
+        'salle_id',
+        'matiere_id',
+        'type',
+    ];
 
     public function salle(): BelongsTo
     {

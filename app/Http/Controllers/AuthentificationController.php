@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Enseignant;
+use App\Models\Etudiant;
+use App\Models\Parant;
 use App\Models\Personne;
 use App\Models\User;
 use Google_Client;
@@ -37,6 +39,8 @@ class AuthentificationController extends Controller
         $valid = Validator::make($request->all(), [
             'nom' => 'required|string|max:255',
             'prenom' => 'required|string|max:255',
+            'filiere' => 'required|exists:filieres,id',
+            'niveau' => 'required|exists:niveaux,id',
             'date_naissance' => 'required|date',
             'sexe' => 'required|in:M,F',
             'tel' => 'required',
@@ -79,20 +83,27 @@ class AuthentificationController extends Controller
         $personne->user_id = $user->id;
         $personne->save();
 
-        if ($validatedData['role'] == 'enseignant') {
-            $enseignant = new Enseignant();
-            $enseignant->personne_id = $personne->id;
+        if ($validatedData['role'] == 'oarent') {
+            $parent = new Parant();
+            $parent->personne_id = $personne->id;
         }
 
-        // if ($validatedData['role'] == 'etudiant') {
-        //     $enseignant = new Enseignant();
-        //     $enseignant->personne_id = $personne->id;
-        // }
+        if ($validatedData['role'] == 'etudiant') {
+            $etudiant = new Etudiant();
+            $etudiant->personne_id = $personne->id;
+            $etudiant->filiere_id = $validatedData['filiere'];
+            $etudiant->niveau_id = $validatedData['niveau'];
+            $etudiant->save();
+        }
 
-        // if ($validatedData['role'] == 'parent') {
-        //     $enseignant = new Enseignant();
-        //     $enseignant->personne_id = $personne->id;
-        // }
+
+        if ($user->personne->role === 'etudiant') {
+            $user->load(['personne', 'personne.etudiant' => function ($query) {
+                $query->with('filiere', 'niveau');
+            }]);
+        } else {
+            $user->load('personne');
+        }
 
         return response()->json([
             'token' => $user->createToken('mobile')->plainTextToken,
@@ -106,6 +117,7 @@ class AuthentificationController extends Controller
         $valid = Validator::make($request->all(), [
             'email' => 'required|email',
             'password' => 'required|min:8',
+            'expo_token' => 'nullable|string',
         ]);
 
         if ($valid->fails()) {
@@ -121,9 +133,24 @@ class AuthentificationController extends Controller
                 'email' => ['Les informations d\'identification fournies sont incorrectes.'],
             ]);
         }
+
+        $user->expo_token = $request->expo_token;
+        $user->update();
+
+
+        if ($user->personne->role === 'enseignant') {
+            $user->load(['personne', 'personne.enseignant', 'personne.enseignant.matieres', 'personne.enseignant.matieres.niveau', 'personne.enseignant.matieres.niveau.filiere']);
+        } elseif ($user->personne->role === 'etudiant' || $user->personne->role === 'delegue') {
+            $user->load(['personne', 'personne.etudiant' => function ($query) {
+                $query->with('filiere', 'niveau');
+            }]);
+        } else {
+            $user->load('personne');
+        }
+
         return response()->json([
             'token' => $request->device ?  $user->createToken('web')->plainTextToken : $user->createToken('mobile')->plainTextToken,
-            'user' => $user->load('personne'),
+            'user' => $user,
         ], 200);
     }
 

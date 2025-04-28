@@ -18,7 +18,7 @@ return new class extends Migration
             $table->date('date_naissance');
             $table->enum('sexe', ['M', 'F']);
             $table->string('tel');
-            $table->enum('role', ['admin', 'enseignant', 'etudiant', 'parent', 'responsable']);
+            $table->enum('role', ['admin', 'enseignant', 'etudiant', 'parent', 'delegue']);
             $table->foreignId('user_id')->nullable()->constrained('users')->onDelete('cascade')->onUpdate('cascade');
             $table->timestamps();
         });

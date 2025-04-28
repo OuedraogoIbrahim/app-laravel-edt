@@ -3,13 +3,14 @@
 use App\Http\Controllers\AuthentificationController;
 use App\Http\Controllers\ClassesController;
 use App\Http\Controllers\CoursesController;
+use App\Http\Controllers\EdtProvisoireController;
+use App\Http\Controllers\EnseignantController;
 use App\Http\Controllers\FiliereController;
 use App\Http\Controllers\MatieresController;
 use App\Http\Controllers\NiveauController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
 use Laravel\Socialite\Facades\Socialite;
 
@@ -45,14 +46,25 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('/courses', CoursesController::class);
     Route::apiResource('/salles', ClassesController::class);
 
+    Route::apiResource('enseignants', EnseignantController::class);
+
     Route::get('week/courses', [CoursesController::class, 'weekCourses']);
     Route::get('pending-validation/courses', [CoursesController::class, 'pendingValidation']);
     Route::put('cancel/courses/{course}', [CoursesController::class, 'cancelCourse']);
     Route::put('accept/courses/{course}', [CoursesController::class, 'acceptCourse']);
+    Route::put('complete/courses/{course}', [CoursesController::class, 'courseCompleted']);
+
     Route::post('/logout', [AuthentificationController::class, 'logout']);
 
     Route::post('profile/modify', [ProfileController::class, 'modifyProfile']);
     Route::post('password/change', [ProfileController::class, 'modifyPassword']);
+
+    Route::post('emploi-du-temps/provisoire', [EdtProvisoireController::class, 'create']);
+    Route::post('emploi-du-temps/provisoire/{id}', [EdtProvisoireController::class, 'ValidateEdt']);
+    Route::post('emploi-du-temps/provisoire/{id}', [EdtProvisoireController::class, 'RefuseEdt']);
 });
+
+
+Route::get('emploi-du-temps/provisoire', [EdtProvisoireController::class, 'index']);
 
 Route::get('notifications', [NotificationController::class, 'index'])->middleware(['auth:sanctum']);
