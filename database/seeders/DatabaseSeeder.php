@@ -1,17 +1,41 @@
 <?php
 
+use App\Models\Admin;
 use Illuminate\Database\Seeder;
 use App\Models\Cours;
 use App\Models\Filiere;
 use App\Models\Matiere;
 use App\Models\Niveau;
+use App\Models\Personne;
 use App\Models\Salle;
+use App\Models\User;
 use Carbon\Carbon;
 
 class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
+
+        $user = new User();
+        $user->email = 'admin@gmail.com';
+        $user->password = bcrypt('password');
+        $user->save();
+
+        $personne = new Personne();
+        $personne->nom = "admin";
+        $personne->prenom = 'admin';
+        $personne->sexe = 'M';
+        $personne->role = 'admin';
+        $personne->date_naissance = '2222-12-12';
+        $personne->tel = 50505050;
+        $personne->user_id = $user->id;
+
+        $personne->save();
+
+        $admin = new Admin();
+        $admin->personne_id = $personne->id;
+        $admin->save();
+
         // Créer des salles
         $salles = Salle::factory(5)->create();
 
