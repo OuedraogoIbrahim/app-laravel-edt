@@ -27,7 +27,6 @@ Route::post('/login', [AuthentificationController::class, 'login']);
 Route::get('/auth/google/redirect', [AuthentificationController::class, 'redirectToGoogle']);
 Route::get('/auth/google/callback', [AuthentificationController::class, 'loginWithGoogle']);
 
-
 Route::get('/auth/github/redirect', [AuthentificationController::class, 'redirectToGithub']);
 Route::get('/auth/github/callback', [AuthentificationController::class, 'loginWithGithub']);
 

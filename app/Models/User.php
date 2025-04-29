@@ -23,11 +23,11 @@ class User extends Authenticatable
      * @var list<string>
      */
     protected $fillable = [
-        'name',
         'email',
         'password',
         'provider',
-        'provider_id'
+        'provider_id',
+        'expo_token',
     ];
 
     /**
@@ -54,13 +54,6 @@ class User extends Authenticatable
         ];
     }
 
-    /**
-     * @return Collection<int, ExpoPushToken>
-     */
-    // public function routeNotificationForExpo(): Collection
-    // {
-    //     return $this->devices->pluck('expo_token');
-    // }
 
     public function routeNotificationForExpo(): ?ExpoPushToken
     {

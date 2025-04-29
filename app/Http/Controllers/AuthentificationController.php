@@ -83,7 +83,7 @@ class AuthentificationController extends Controller
         $personne->user_id = $user->id;
         $personne->save();
 
-        if ($validatedData['role'] == 'oarent') {
+        if ($validatedData['role'] == 'parent') {
             $parent = new Parant();
             $parent->personne_id = $personne->id;
         }
@@ -107,7 +107,7 @@ class AuthentificationController extends Controller
 
         return response()->json([
             'token' => $user->createToken('mobile')->plainTextToken,
-            'user' => $user->load('personne')
+            'user' => $user
         ], 200);
     }
 
@@ -167,17 +167,25 @@ class AuthentificationController extends Controller
         }
     }
 
-    public function redirectToGoogle()
+    public function redirectToGoogle(Request $request)
     {
-        return Socialite::driver('google')->stateless()->redirect();
+        if ($request->userId) {
+            return Socialite::driver('google')->with(['state' => $request->userId])->stateless()->redirect();
+        } else {
+            return Socialite::driver('google')->stateless()->redirect();
+        }
     }
 
-    public function redirectToGithub()
+    public function redirectToGithub(Request $request)
     {
-        return Socialite::driver('github')->stateless()->redirect();
+        if ($request->userId) {
+            return Socialite::driver('github')->stateless()->with(['state' => $request->userId])->redirect();
+        } else {
+            return Socialite::driver('github')->stateless()->redirect();
+        }
     }
 
-    public function redirectToFacebook()
+    public function redirectToFacebook(Request $request)
     {
         return Socialite::driver('facebook')->stateless()->redirect();
     }
@@ -192,6 +200,18 @@ class AuthentificationController extends Controller
                     'token' => ['Token invalide']
                 ]
             ], 401);
+        }
+
+        if ($request->state) {
+            $user = User::query()->findOrFail($request->state);
+            $user->provider = 'google';
+            $user->provider_id = $googleUser->id;
+            $user->update();
+
+            $token = $user->createToken('google-token')->plainTextToken;
+            $user = $user->load("personne");
+
+            return redirect("http://localhost:5173/login/success?token=$token&user=$user");
         }
 
         $user = User::query()
@@ -216,14 +236,24 @@ class AuthentificationController extends Controller
     public function loginWithGithub(Request $request)
     {
         $githubUser = Socialite::driver('github')->stateless()->user();
-
-        Log::info(json_encode($githubUser));
         if (!$githubUser) {
             return response()->json([
                 'errors' => [
                     'token' => ['Token invalide']
                 ]
             ], 401);
+        }
+
+        if ($request->state) {
+            $user = User::query()->findOrFail($request->state);
+            $user->provider = 'github';
+            $user->provider_id = $githubUser->id;
+            $user->update();
+
+            $token = $user->createToken('github-token')->plainTextToken;
+            $user = $user->load("personne");
+
+            return redirect("http://localhost:5173/login/success?token=$token&user=$user");
         }
 
         $user = User::query()
@@ -285,25 +315,41 @@ class AuthentificationController extends Controller
 
     public function loginWithProviderForMobile(Request $request)
     {
-        $user = User::query()
-            ->where('provider', $request->provider)
-            ->where('provider_id', $request->provider_id)
-            ->first();
+        if ($request->userId) {
+            $user = User::query()->findOrFail($request->userId);
+            $user->provider = $request->provider;
+            $user->provider_id = $request->provider_id;
+            $user->update();
+        } else {
+            $user = User::query()
+                ->where('provider', $request->provider)
+                ->where('provider_id', $request->provider_id)
+                ->first();
 
-        if (!$user) {
-            return response()->json([
-                'errors' => [
-                    'credentials' => ['Informations invalides']
-                ]
-            ], 401);
+            if (!$user) {
+                return response()->json([
+                    'errors' => [
+                        'credentials' => ['Informations invalides']
+                    ]
+                ], 401);
+            }
         }
 
         $token = $user->createToken('mobile-provider')->plainTextToken;
-        $user = $user->load("personne");
+
+        if ($user->personne->role === 'enseignant') {
+            $user->load(['personne', 'personne.enseignant', 'personne.enseignant.matieres', 'personne.enseignant.matieres.niveau', 'personne.enseignant.matieres.niveau.filiere']);
+        } elseif ($user->personne->role === 'etudiant' || $user->personne->role === 'delegue') {
+            $user->load(['personne', 'personne.etudiant' => function ($query) {
+                $query->with('filiere', 'niveau');
+            }]);
+        } else {
+            $user->load('personne');
+        }
 
         return response()->json([
             'token' => $token,
-            'user' => $user->load('personne'),
+            'user' => $user,
         ], 200);
     }
 }

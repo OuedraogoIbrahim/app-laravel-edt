@@ -9,5 +9,5 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
-// Schedule::command(DailyTask::class)->dailyAt('18:00');
-Schedule::command(DailyTask::class)->everyFiveSeconds();
+Schedule::command(DailyTask::class)->dailyAt('18:00');
+// Schedule::command(DailyTask::class)->everyFiveSeconds();
