@@ -12,8 +12,7 @@ class ClassesController extends Controller
      */
     public function index()
     {
-        //
-        return response()->json(Salle::all());
+        return response()->json(Salle::all(), 201);
     }
 
     /**
@@ -21,7 +20,15 @@ class ClassesController extends Controller
      */
     public function store(Request $request)
     {
-        //
+        $request->validate([
+            'nom' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'capacite' => 'required|integer',
+        ]);
+
+        $salle = Salle::create($request->all());
+
+        return response()->json($salle, 201);
     }
 
     /**
@@ -29,7 +36,8 @@ class ClassesController extends Controller
      */
     public function show(string $id)
     {
-        //
+        $salle = Salle::findOrFail($id);
+        return response()->json($salle);
     }
 
     /**
@@ -37,7 +45,16 @@ class ClassesController extends Controller
      */
     public function update(Request $request, string $id)
     {
-        //
+        $request->validate([
+            'nom' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'capacite' => 'required|integer',
+        ]);
+
+        $salle = Salle::findOrFail($id);
+        $salle->update($request->all());
+
+        return response()->json($salle);
     }
 
     /**
@@ -45,6 +62,9 @@ class ClassesController extends Controller
      */
     public function destroy(string $id)
     {
-        //
+        $salle = Salle::findOrFail($id);
+        $salle->delete();
+
+        return response()->json(null, 204);
     }
 }

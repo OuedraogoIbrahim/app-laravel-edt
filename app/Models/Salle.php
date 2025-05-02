@@ -10,7 +10,7 @@ class Salle extends Model
 {
     use HasFactory;
 
-    protected $fillable = [];
+    protected $fillable = ['nom', 'description', 'capacite'];
 
     public function cours(): HasMany
     {

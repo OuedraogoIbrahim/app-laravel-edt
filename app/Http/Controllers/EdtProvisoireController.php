@@ -55,7 +55,7 @@ class EdtProvisoireController extends Controller
             $niveauId = $this->getNiveauId($validatedData['filiere'], $validatedData['niveau']);
 
             // Déterminer les dates du semestre
-            $startDate = $validatedData['semestre'] === 'semestre 1' ? '2025-10-01' : '2025-03-01';
+            $startDate = $validatedData['semestre'] === 'semestre 1' ? '2024-10-01' : '2025-03-01';
             $endDate = $validatedData['semestre'] === 'semestre 1' ? '2025-02-28' : '2025-07-31';
 
             // Récupérer les matières avec leurs heures totales
@@ -74,7 +74,6 @@ class EdtProvisoireController extends Controller
             $currentDate = Carbon::parse($startDate);
 
             while ($currentDate <= Carbon::parse($endDate) && array_sum($heuresRestantes) > 0) {
-                Log::info("Requete en cours");
                 for ($i = 0; $i < 5; $i++) { // Lundi à vendredi
                     $dayOfWeek = $currentDate->format('l');
 
@@ -106,6 +105,8 @@ class EdtProvisoireController extends Controller
                             $niveauId
                         );
                         $heuresRestantes[$matiereId] -= 4; // Déduire 4 heures
+
+                        Log::info("Ajout reussie");
 
                         // Vérifier si des heures restent pour une nouvelle matière
                         $matiereId = $this->selectMatiere($heuresRestantes);
