@@ -50,7 +50,7 @@ class CoursesController extends Controller
             $query->whereHas('matiere.enseignants', function ($q) use ($user) {
                 $q->where('enseignants.id', $user->personne->enseignant->id);
             });
-        } elseif ($user->personne->role == 'etudiant' || $user->personne->role == 'delegue') {
+        } elseif ($user->personne->role == 'etudiant' || $user->personne->role == 'delegue' || $user->personne->role == 'parent') {
             $query->where('niveau_id', $user->personne->etudiant->niveau_id);
         }
 
@@ -89,7 +89,7 @@ class CoursesController extends Controller
 
         $courses = Cours::query()
             ->with(['matiere', 'salle', 'filiere', 'niveau'])
-            ->when(Auth::user()->personne->role == 'etudiant' || Auth::user()->personne->role == 'delegue', function ($query) use ($request) {
+            ->when(Auth::user()->personne->role == 'etudiant' || Auth::user()->personne->role == 'delegue' || Auth::user()->personne->role == 'parent', function ($query) use ($request) {
                 $query->where('niveau_id', Auth::user()->personne->etudiant->niveau_id);
             })
             ->when($niveauId && Auth::user()->personne->role == 'enseignant', function ($query) use ($niveauId) {

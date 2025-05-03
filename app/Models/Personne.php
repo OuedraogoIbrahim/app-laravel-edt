@@ -23,6 +23,11 @@ class Personne extends Model
         return $this->hasOne(Etudiant::class);
     }
 
+    public function parent(): HasOne
+    {
+        return $this->hasOne(Parant::class);
+    }
+
     public function enseignant(): HasOne
     {
         return $this->hasOne(Enseignant::class);

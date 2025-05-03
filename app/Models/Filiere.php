@@ -33,6 +33,11 @@ class Filiere extends Model
         return $this->hasMany(Etudiant::class);
     }
 
+    public function parents(): HasMany
+    {
+        return $this->hasMany(Parant::class);
+    }
+
 
     public function cours(): HasMany
     {

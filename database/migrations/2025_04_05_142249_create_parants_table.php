@@ -14,6 +14,8 @@ return new class extends Migration
         Schema::create('parants', function (Blueprint $table) {
             $table->id();
             $table->foreignId('personne_id')->nullable()->constrained('personnes')->onDelete('cascade')->onUpdate('cascade');
+            $table->foreignId('filiere_id')->nullable()->constrained('filieres')->onDelete('cascade')->onUpdate('cascade');
+            $table->foreignId('niveau_id')->nullable()->constrained('niveaux')->onDelete('cascade')->onUpdate('cascade');
             $table->timestamps();
         });
     }

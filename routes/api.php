@@ -59,6 +59,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('password/change', [ProfileController::class, 'modifyPassword']);
 
     Route::post('emploi-du-temps/provisoire', [EdtProvisoireController::class, 'create']);
+    Route::delete('emploi-du-temps/provisoire/{date_creation}/{niveau_id}', [EdtProvisoireController::class, 'destroy']);
     Route::post('emploi-du-temps/provisoire/{id}', [EdtProvisoireController::class, 'ValidateEdt']);
     Route::post('emploi-du-temps/provisoire/{id}', [EdtProvisoireController::class, 'RefuseEdt']);
 });

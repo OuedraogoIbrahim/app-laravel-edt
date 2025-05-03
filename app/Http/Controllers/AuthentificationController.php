@@ -59,13 +59,13 @@ class AuthentificationController extends Controller
 
         $validatedData = $valid->validated();
 
-        if (User::query()->where('expo_token', $validatedData['expo_token'])->exists()) {
-            return response()->json([
-                'errors' => [
-                    'expo_token' => ['Vous avez déjà un compte.'],
-                ],
-            ], 422);
-        }
+        // if (User::query()->where('expo_token', $validatedData['expo_token'])->exists()) {
+        //     return response()->json([
+        //         'errors' => [
+        //             'expo_token' => ['Vous avez déjà un compte.'],
+        //         ],
+        //     ], 422);
+        // }
 
         $user = new User();
         $user->email = $validatedData['email'];
@@ -85,6 +85,8 @@ class AuthentificationController extends Controller
 
         if ($validatedData['role'] == 'parent') {
             $parent = new Parant();
+            $parent->filiere_id = $validatedData['filiere'];
+            $parent->niveau_id = $validatedData['niveau'];
             $parent->personne_id = $personne->id;
         }
 
@@ -102,7 +104,10 @@ class AuthentificationController extends Controller
                 $query->with('filiere', 'niveau');
             }]);
         } else {
-            $user->load('personne');
+            // $user->load('personne');
+            $user->load(['personne', 'personne.parent' => function ($query) {
+                $query->with('filiere', 'niveau');
+            }]);
         }
 
         return response()->json([
@@ -145,7 +150,11 @@ class AuthentificationController extends Controller
                 $query->with('filiere', 'niveau');
             }]);
         } else {
-            $user->load('personne');
+            $user->load(['personne', 'personne.parent' => function ($query) {
+                $query->with('filiere', 'niveau');
+            }]);
+
+            // $user->load('personne');
         }
 
         return response()->json([

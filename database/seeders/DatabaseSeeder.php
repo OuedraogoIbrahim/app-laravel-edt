@@ -37,19 +37,19 @@ class DatabaseSeeder extends Seeder
         $admin->save();
 
         // Créer des salles
-        $salles = Salle::factory(5)->create();
+        $salles = Salle::factory(15)->create();
 
         $filieresData = [
-            'ABF' => [
-                'L1' => ['Comptabilité générale', 'Droit des affaires', 'Introduction à la gestion'],
-                'L2' => ['Analyse financière', 'Contrôle de gestion', 'Fiscalité'],
-                'L3' => ['Audit', 'Gestion budgétaire', 'Comptabilité approfondie'],
-            ],
-            'ADB' => [
-                'L1' => ['Économie générale', 'Marketing fondamental', 'Mathématiques financières'],
-                'L2' => ['Management', 'Gestion des ressources humaines', 'Techniques commerciales'],
-                'L3' => ['Stratégie d’entreprise', 'Entrepreneuriat', 'Gestion de projet'],
-            ],
+            // 'ABF' => [
+            //     'L1' => ['Comptabilité générale', 'Droit des affaires', 'Introduction à la gestion'],
+            //     'L2' => ['Analyse financière', 'Contrôle de gestion', 'Fiscalité'],
+            //     'L3' => ['Audit', 'Gestion budgétaire', 'Comptabilité approfondie'],
+            // ],
+            // 'ADB' => [
+            //     'L1' => ['Économie générale', 'Marketing fondamental', 'Mathématiques financières'],
+            //     'L2' => ['Management', 'Gestion des ressources humaines', 'Techniques commerciales'],
+            //     'L3' => ['Stratégie d’entreprise', 'Entrepreneuriat', 'Gestion de projet'],
+            // ],
             'MIAGE' => [
                 'L1' => ['Algorithmique', 'Programmation en C', 'Mathématiques discrètes'],
                 'L2' => ['Base de données', 'Systèmes d’exploitation', 'Programmation orientée objet'],

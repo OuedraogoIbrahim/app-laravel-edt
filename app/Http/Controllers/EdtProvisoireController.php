@@ -106,7 +106,6 @@ class EdtProvisoireController extends Controller
                         );
                         $heuresRestantes[$matiereId] -= 4; // Déduire 4 heures
 
-                        Log::info("Ajout reussie");
 
                         // Vérifier si des heures restent pour une nouvelle matière
                         $matiereId = $this->selectMatiere($heuresRestantes);
@@ -189,5 +188,15 @@ class EdtProvisoireController extends Controller
 
         // En cas d'erreur, retourner la dernière matière
         return array_key_last($matieresDisponibles);
+    }
+
+    public function destroy(string $date_creation, string $niveau_id)
+    {
+
+        $edtProvisoires = EdtProvisoire::query()->where(['date_creation' => $date_creation, 'niveau_id' => $niveau_id])->get();
+        foreach ($edtProvisoires as $edtProvisoire) {
+            $edtProvisoire->delete();
+        }
+        return response()->json(null, 204);
     }
 }
